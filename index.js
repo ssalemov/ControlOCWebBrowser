@@ -3,14 +3,17 @@ const fetch = require('node-fetch')
 const cheerio = require('cheerio')
 const app = express()
 
-const PORT = process.env.PORT || 3000
-
 app.get('/proxy', async (req, res) => {
   const targetUrl = req.query.url
-  if (!targetUrl) return res.send('No URL provided')
+  if (!targetUrl) return res.end()
 
   try {
-    const response = await fetch(targetUrl)
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        'Accept': req.headers['accept'] || '*/*'
+      }
+    })
     let body = await response.text()
     const $ = cheerio.load(body)
 
@@ -32,12 +35,11 @@ app.get('/proxy', async (req, res) => {
       }
     })
 
+    res.set('Content-Type', 'text/html')
     res.send($.html())
   } catch (e) {
-    res.send('Error: ' + e.message)
+    res.end()
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
-})
+app.listen(process.env.PORT || 3000)

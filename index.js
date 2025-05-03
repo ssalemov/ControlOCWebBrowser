@@ -1,26 +1,39 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const app = express();
-
-app.get('/', (req, res) => res.send('Proxy Renderer работает!'));
+const express = require('express')
+const fetch = require('node-fetch')
+const cheerio = require('cheerio')
+const app = express()
 
 app.get('/proxy', async (req, res) => {
-  const siteUrl = req.query.url;
-  if (!siteUrl) return res.send('Укажите ?url=https://example.com');
+  const targetUrl = req.query.url
+  if (!targetUrl) return res.send('No URL provided')
 
   try {
-    const response = await fetch(siteUrl);
-    let text = await response.text();
+    const response = await fetch(targetUrl)
+    let body = await response.text()
+    const $ = cheerio.load(body)
 
-    // Удаляем X-Frame-Options и CSP (мета-теги)
-    text = text.replace(/<meta[^>]+http-equiv=["']?(X-Frame-Options|Content-Security-Policy)[^>]*>/gi, '');
+    $('a').each(function () {
+      const href = $(this).attr('href')
+      if (href && !href.startsWith('javascript:')) {
+        const absoluteUrl = new URL(href, targetUrl).href
+        const proxiedUrl = '/proxy?url=' + encodeURIComponent(absoluteUrl)
+        $(this).attr('href', proxiedUrl)
+      }
+    })
 
-    res.send(text);
+    $('form').each(function () {
+      const action = $(this).attr('action')
+      if (action) {
+        const absoluteUrl = new URL(action, targetUrl).href
+        const proxiedUrl = '/proxy?url=' + encodeURIComponent(absoluteUrl)
+        $(this).attr('action', proxiedUrl)
+      }
+    })
+
+    res.send($.html())
   } catch (e) {
-    res.status(500).send('Ошибка: ' + e.message);
+    res.send('Error: ' + e.message)
   }
-});
+})
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log('Proxy Renderer слушает');
-});
+app.listen(process.env.PORT || 3000)

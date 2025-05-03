@@ -3,6 +3,8 @@ const fetch = require('node-fetch')
 const cheerio = require('cheerio')
 const app = express()
 
+const PORT = process.env.PORT || 3000
+
 app.get('/proxy', async (req, res) => {
   const targetUrl = req.query.url
   if (!targetUrl) return res.send('No URL provided')
@@ -36,4 +38,6 @@ app.get('/proxy', async (req, res) => {
   }
 })
 
-app.listen(process.env.PORT || 3000)
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})
